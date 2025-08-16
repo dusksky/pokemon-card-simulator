@@ -1,0 +1,872 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ポケカ 確率計算機 (カード移動機能付き)</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;700&display=swap');
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f0f4f8;
+        }
+        .bg-card {
+            background-color: #ffffff;
+        }
+        .btn-primary {
+            transition: all 0.3s ease;
+        }
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+        input[type="number"]::-webkit-outer-spin-button,
+        input[type="number"]::-webkit-inner-spin-button {
+            -webkit-appearance: none;
+            margin: 0;
+        }
+        input[type="number"] {
+            -moz-appearance: textfield;
+        }
+    </style>
+    <style>
+        .card-container {
+            min-height: 100px;
+            border: 2px dashed #d1d5db;
+            padding: 1rem;
+            border-radius: 0.75rem;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.5rem;
+        }
+        .card {
+            width: 60px;
+            height: 85px;
+            background-color: #e0e0e0;
+            border-radius: 8px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            font-size: 10px;
+            cursor: pointer;
+            position: relative;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            transition: transform 0.2s ease, box-shadow 0.2s ease;
+            text-align: center;
+            padding: 4px;
+        }
+        .card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+        }
+        .card.target-card {
+            background-color: #3b82f6;
+            color: white;
+        }
+        .card.pokemon {
+            background-color: #a78bfa; /* ポケモンカードの色を紫に変更 */
+        }
+        .card.trainer {
+            background-color: #f9d863;
+        }
+        .card.energy {
+            background-color: #f6723b;
+        }
+        .card.stadium {
+            background-color: #63d6f9;
+        }
+        /* カスタムモーダルのスタイル */
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 1000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            overflow: auto;
+            background-color: rgba(0,0,0,0.4);
+            justify-content: center;
+            align-items: center;
+        }
+        .modal-content {
+            background-color: #fefefe;
+            padding: 24px;
+            border-radius: 12px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+            width: 90%;
+            max-width: 600px;
+            max-height: 80vh;
+            overflow-y: auto;
+        }
+        .card-select-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(80px, 1fr));
+            gap: 1rem;
+            margin-top: 1rem;
+        }
+        .modal-card {
+            cursor: pointer;
+            border: 2px solid transparent;
+            border-radius: 8px;
+            padding: 4px;
+            text-align: center;
+            background-color: #e0e0e0;
+            transition: all 0.2s ease;
+        }
+        .modal-card.selected {
+            border-color: #3b82f6;
+            box-shadow: 0 0 0 3px #3b82f6;
+            background-color: #dbeafe;
+        }
+    </style>
+</head>
+<body class="bg-gray-100 flex items-center justify-center min-h-screen p-4">
+    <div class="max-w-5xl w-full p-8 bg-card rounded-2xl shadow-xl border border-gray-200">
+        <h1 class="text-3xl font-bold text-center text-gray-800 mb-6">ポケカ 確率計算機 (カード移動機能付き)</h1>
+
+        <div class="mt-6 mb-6">
+            <h3 class="text-lg font-bold text-gray-800 mb-2">場</h3>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-4">
+                <div>
+                    <div class="flex items-center justify-between mb-2">
+                        <h4 class="text-md font-bold text-gray-700">バトルポケモン</h4>
+                        <button onclick="openMoveModal('battle')" class="text-xs bg-gray-200 hover:bg-gray-300 text-gray-700 font-bold py-1 px-3 rounded-full">移動</button>
+                    </div>
+                    <div class="card-container min-h-[100px] flex items-center justify-center" id="battle-container"></div>
+                </div>
+                <div>
+                    <div class="flex items-center justify-between mb-2">
+                        <h4 class="text-md font-bold text-gray-700">スタジアム</h4>
+                        <button onclick="openMoveModal('stadium')" class="text-xs bg-gray-200 hover:bg-gray-300 text-gray-700 font-bold py-1 px-3 rounded-full">移動</button>
+                    </div>
+                    <div class="card-container min-h-[100px] flex items-center justify-center" id="stadium-container"></div>
+                </div>
+            </div>
+            <div>
+                <div class="flex items-center justify-between mb-2">
+                    <h4 class="text-md font-bold text-gray-700">ベンチポケモン</h4>
+                    <button onclick="openMoveModal('bench')" class="text-xs bg-gray-200 hover:bg-gray-300 text-gray-700 font-bold py-1 px-3 rounded-full">移動</button>
+                </div>
+                <div class="card-container min-h-[100px] flex items-center justify-center" id="bench-container"></div>
+            </div>
+        </div>
+        
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
+            <div>
+                <div class="flex items-center justify-between mb-2">
+                    <h3 class="text-lg font-bold text-gray-800">手札</h3>
+                    <button onclick="openMoveModal('hand')" class="text-xs bg-gray-200 hover:bg-gray-300 text-gray-700 font-bold py-1 px-3 rounded-full">移動</button>
+                </div>
+                <div class="card-container" id="hand-container"></div>
+                <p id="hand-status" class="mt-2 text-center text-gray-600 font-semibold">枚数: 0枚</p>
+            </div>
+            <div>
+                 <div class="flex items-center justify-between mb-2">
+                    <h3 class="text-lg font-bold text-gray-800">山札</h3>
+                    <button onclick="openMoveModal('deck')" class="text-xs bg-gray-200 hover:bg-gray-300 text-gray-700 font-bold py-1 px-3 rounded-full">移動</button>
+                </div>
+                <div class="card-container" id="deck-container"></div>
+                <p id="deck-status" class="mt-2 text-center text-gray-600 font-semibold">残り: 0枚</p>
+            </div>
+            <div>
+                 <div class="flex items-center justify-between mb-2">
+                    <h3 class="text-lg font-bold text-gray-800">サイド</h3>
+                    <button onclick="openMoveModal('side')" class="text-xs bg-gray-200 hover:bg-gray-300 text-gray-700 font-bold py-1 px-3 rounded-full">移動</button>
+                </div>
+                <div class="card-container" id="side-container"></div>
+                <p id="side-status" class="mt-2 text-center text-gray-600 font-semibold">枚数: 0枚</p>
+            </div>
+        </div>
+        
+        <div class="mt-6 mb-6">
+            <div class="flex items-center justify-between mb-2">
+                <h3 class="text-lg font-bold text-gray-800">トラッシュ</h3>
+                <button onclick="openMoveModal('trash')" class="text-xs bg-gray-200 hover:bg-gray-300 text-gray-700 font-bold py-1 px-3 rounded-full">移動</button>
+            </div>
+            <div class="card-container" id="trash-container"></div>
+            <p id="trash-status" class="mt-2 text-center text-gray-600 font-semibold">枚数: 0枚</p>
+        </div>
+
+        <details class="mb-6 border rounded-lg p-4 bg-gray-50">
+            <summary class="text-xl font-bold text-gray-800 cursor-pointer">
+                カード枚数設定
+                <span id="total-card-count" class="text-sm font-normal text-gray-600 ml-2">(合計 0枚)</span>
+            </summary>
+            <p class="mt-4 text-sm text-gray-500">
+                枚数を設定すると、特定のカードが1枚でも手札に来る確率が自動で計算されます。<br>
+                チェックボックスにチェックを入れると、そのカードが「特定のカード」としてカウントされます。<br>
+                JSON形式は、`{"id": "card1", "name": "カードA", "count": 1, "type": "pokemon", "isBasic": true}`のように、`isBasic`プロパティを追加してください。
+            </p>
+            <div id="card-inputs" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 mt-4">
+                </div>
+        </details>
+        
+        <details class="mb-6 border rounded-lg p-4 bg-gray-50">
+            <summary class="text-xl font-bold text-gray-800 cursor-pointer">
+                カードリストをJSONで編集
+            </summary>
+            <p class="mt-4 text-sm text-gray-500">
+                カードリストと枚数をJSON形式で入力し、カスタマイズできます。
+                <br>
+                フォーマット: `[{"id": "card1", "name": "カードA", "count": 1, "type": "pokemon", "isBasic": true}, {"id": "card2", "name": "カードB", "count": 2, "type": "trainer"}]`
+            </p>
+            <textarea id="json-input" class="w-full h-48 mt-4 p-2 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500 transition duration-200" placeholder='[{"id": "47836", "name": "ラルトス", "count": 3, "isTarget": false, "type": "pokemon", "isBasic": true}, {"id": "47837", "name": "キルリア", "count": 2, "isTarget": false, "type": "pokemon", "evolutionFrom": "47836"}, {"id": "44604", "name": "キルリア(SV4a)", "count": 1, "isTarget": false, "type": "pokemon", "evolutionFrom": "47836"}, {"id": "42574", "name": "サーナイトex", "count": 2, "isTarget": false, "type": "pokemon", "evolutionFrom": "47837"}, {"id": "47838", "name": "メガサーナイトex", "count": 1, "isTarget": false, "type": "pokemon", "evolutionFrom": "42574"}, {"id": "47663", "name": "プルリル", "count": 2, "isTarget": false, "type": "pokemon", "isBasic": true}, {"id": "47664", "name": "ブルンゲルex", "count": 2, "isTarget": false, "type": "pokemon", "evolutionFrom": "47663"}, {"id": "45746", "name": "マシマシラ", "count": 2, "isTarget": false, "type": "pokemon", "isBasic": true}, {"id": "44278", "name": "サケブシッポ", "count": 1, "isTarget": false, "type": "pokemon", "isBasic": true}, {"id": "44606", "name": "フワンテ", "count": 1, "isTarget": false, "type": "pokemon", "isBasic": true}, {"id": "46219", "name": "ハイパーボール", "count": 4, "isTarget": false, "type": "trainer", "effect": { "type": "draw", "count": 3, "trash": 2 } }, {"id": "46089", "name": "なかよしポフィン", "count": 1, "isTarget": false, "type": "trainer", "effect": { "type": "search", "condition": "basic-pokemon", "count": 2 } }, {"id": "46088", "name": "大地の器", "count": 3, "isTarget": false, "type": "trainer", "effect": { "type": "search", "count": 2, "targets": ["energy"] } }, {"id": "45931", "name": "夜のタンカ", "count": 4, "isTarget": false, "type": "trainer"}, {"id": "47880", "name": "ふしぎなアメ", "count": 2, "isTarget": false, "type": "trainer"}, {"id": "46220", "name": "プレシャスキャリー(ACE SPEC)", "count": 1, "isTarget": false, "type": "trainer"}, {"id": "46099", "name": "ワザマシン エヴォリューション", "count": 1, "isTarget": false, "type": "trainer"}, {"id": "46098", "name": "勇気のおまもり", "count": 2, "isTarget": false, "type": "trainer"}, {"id": "47900", "name": "リーリエの決心", "count": 4, "isTarget": false, "type": "trainer"}, {"id": "44063", "name": "ナンジャモ", "count": 3, "isTarget": false, "type": "trainer", "effect": { "type": "shuffle-draw", "count": 5 } }, {"id": "45386", "name": "ペパー", "count": 4, "isTarget": false, "type": "trainer", "effect": { "type": "search", "count": 2, "targets": ["trainer", "pokemon"] } }, {"id": "47859", "name": "ミステリーガーデン", "count": 4, "isTarget": false, "type": "stadium"}, {"id": "42783", "name": "基本超エネルギー", "count": 8, "isTarget": false, "type": "energy"}, {"id": "42785", "name": "基本悪エネルギー", "count": 2, "isTarget": false, "type": "energy"}]'></textarea>
+            <button onclick="loadCardsFromJSON()" class="w-full mt-4 bg-gray-500 text-white font-bold py-2 px-4 rounded-xl btn-primary focus:outline-none focus:ring-2 focus:ring-gray-400 focus:ring-offset-2">
+                カードリストを読み込む
+            </button>
+        </details>
+
+        <div class="flex flex-col md:flex-row gap-4">
+            <button onclick="initializeGame()" class="flex-1 bg-indigo-600 text-white font-bold py-3 px-6 rounded-xl btn-primary focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2">
+                ゲーム開始 (手札7枚・サイド6枚)
+            </button>
+            <button onclick="drawCardToHand()" class="flex-1 bg-green-600 text-white font-bold py-3 px-6 rounded-xl btn-primary focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2">
+                ドロー (1枚引く)
+            </button>
+        </div>
+        <div id="result" class="mt-8 mb-6 text-center text-gray-800 text-2xl font-bold">
+            </div>
+
+    </div>
+
+    <div id="info-modal" class="modal">
+        <div class="modal-content">
+            <h2 id="modal-title" class="text-xl font-bold mb-4"></h2>
+            <p id="modal-message" class="mb-4"></p>
+            <div id="modal-buttons" class="flex justify-end gap-2"></div>
+        </div>
+    </div>
+
+    <div id="deck-modal" class="modal">
+        <div class="modal-content">
+            <h2 class="text-xl font-bold mb-4">山札からカードを選ぶ</h2>
+            <p id="deck-modal-message" class="text-sm text-gray-600 mb-2">欲しいカードを選択してください。</p>
+            <div id="deck-select-grid" class="card-select-grid"></div>
+            <div class="flex justify-end gap-2 mt-4">
+                <button onclick="selectAndDrawCards()" class="bg-indigo-600 text-white font-bold py-2 px-4 rounded-xl btn-primary">選択したカードを手札に加える</button>
+                <button onclick="closeDeckModal()" class="bg-gray-400 text-white font-bold py-2 px-4 rounded-xl btn-primary">キャンセル</button>
+            </div>
+        </div>
+    </div>
+    
+    <div id="hand-modal" class="modal">
+        <div class="modal-content">
+            <h2 class="text-xl font-bold mb-4">手札からトラッシュするカードを選ぶ</h2>
+            <p id="hand-modal-message" class="text-sm text-gray-600 mb-2">トラッシュするカードを選択してください。</p>
+            <div id="hand-select-grid" class="card-select-grid"></div>
+            <div class="flex justify-end gap-2 mt-4">
+                <button onclick="selectAndTrashCards()" class="bg-indigo-600 text-white font-bold py-2 px-4 rounded-xl btn-primary">選択したカードをトラッシュ</button>
+                <button onclick="closeHandModal()" class="bg-gray-400 text-white font-bold py-2 px-4 rounded-xl btn-primary">キャンセル</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="move-modal" class="modal">
+        <div class="modal-content">
+            <h2 id="move-modal-title" class="text-xl font-bold mb-4">カードを移動</h2>
+            <p id="move-modal-message" class="text-sm text-gray-600 mb-2">移動するカードを選択してください。</p>
+            <div id="move-select-grid" class="card-select-grid"></div>
+            <h3 class="text-lg font-bold mt-6 mb-2">移動先を選択</h3>
+            <div id="move-destination-buttons" class="grid grid-cols-2 sm:grid-cols-3 gap-2 mt-4">
+                </div>
+            <div class="flex justify-end gap-2 mt-6">
+                <button onclick="closeMoveModal()" class="bg-gray-400 text-white font-bold py-2 px-4 rounded-xl btn-primary">キャンセル</button>
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        // カードデータ（デフォルト）
+        let allCards = [
+            { "id": "47836", "name": "ラルトス", "count": 3, "isTarget": false, "type": "pokemon", "evolutionFrom": null, "isBasic": true },
+            { "id": "47837", "name": "キルリア", "count": 2, "isTarget": false, "type": "pokemon", "evolutionFrom": "47836", "isBasic": false },
+            { "id": "44604", "name": "キルリア(SV4a)", "count": 1, "isTarget": false, "type": "pokemon", "evolutionFrom": "47836", "isBasic": false },
+            { "id": "42574", "name": "サーナイトex", "count": 2, "isTarget": false, "type": "pokemon", "evolutionFrom": "47837", "isBasic": false },
+            { "id": "47838", "name": "メガサーナイトex", "count": 1, "isTarget": false, "type": "pokemon", "evolutionFrom": "42574", "isBasic": false },
+            { "id": "47663", "name": "プルリル", "count": 2, "isTarget": false, "type": "pokemon", "isBasic": true },
+            { "id": "47664", "name": "ブルンゲルex", "count": 2, "isTarget": false, "type": "pokemon", "evolutionFrom": "47663", "isBasic": false },
+            { "id": "45746", "name": "マシマシラ", "count": 2, "isTarget": false, "type": "pokemon", "isBasic": true },
+            { "id": "44278", "name": "サケブシッポ", "count": 1, "isTarget": false, "type": "pokemon", "isBasic": true },
+            { "id": "44606", "name": "フワンテ", "count": 1, "isTarget": false, "type": "pokemon", "isBasic": true },
+            { "id": "46219", "name": "ハイパーボール", "count": 4, "isTarget": false, "type": "trainer", "evolutionFrom": null, "effect": { "type": "draw", "count": 3, "trash": 2 } },
+            { "id": "46089", "name": "なかよしポフィン", "count": 1, "isTarget": false, "type": "trainer", "evolutionFrom": null, "effect": { "type": "search", "condition": "basic-pokemon", "count": 2 } },
+            { "id": "46088", "name": "大地の器", "count": 3, "isTarget": false, "type": "trainer", "evolutionFrom": null, "effect": { "type": "search", "count": 2, "targets": ["energy"] } },
+            { "id": "45931", "name": "夜のタンカ", "count": 4, "isTarget": false, "type": "trainer", "evolutionFrom": null },
+            { "id": "47880", "name": "ふしぎなアメ", "count": 2, "isTarget": false, "type": "trainer", "evolutionFrom": null },
+            { "id": "46220", "name": "プレシャスキャリー(ACE SPEC)", "count": 1, "isTarget": false, "type": "trainer", "evolutionFrom": null },
+            { "id": "46099", "name": "ワザマシン エヴォリューション", "count": 1, "isTarget": false, "type": "trainer", "evolutionFrom": null },
+            { "id": "46098", "name": "勇気のおまもり", "count": 2, "isTarget": false, "type": "trainer", "evolutionFrom": null },
+            { "id": "47900", "name": "リーリエの決心", "count": 4, "isTarget": false, "type": "trainer", "evolutionFrom": null },
+            { "id": "44063", "name": "ナンジャモ", "count": 3, "isTarget": false, "type": "trainer", "evolutionFrom": null, "effect": { "type": "shuffle-draw", "count": 5 } },
+            { "id": "45386", "name": "ペパー", "count": 4, "isTarget": false, "type": "trainer", "evolutionFrom": null, "effect": { "type": "search", "count": 2, "targets": ["trainer", "pokemon"] } },
+            { "id": "47859", "name": "ミステリーガーデン", "count": 4, "isTarget": false, "type": "stadium", "evolutionFrom": null },
+            { "id": "42783", "name": "基本超エネルギー", "count": 8, "isTarget": false, "type": "energy", "evolutionFrom": null },
+            { "id": "42785", "name": "基本悪エネルギー", "count": 2, "isTarget": false, "type": "energy", "evolutionFrom": null }
+        ];
+
+        let deck = [];
+        let hand = [];
+        let side = [];
+        let trash = [];
+        let battle = [];
+        let bench = [];
+        let stadium = [];
+        
+        let deckSearchCallback = null;
+        
+        let moveSourceZoneName = '';
+        let selectedIndicesToMove = [];
+        
+        function loadData() {
+            try {
+                const savedCardsJSON = localStorage.getItem('pokemonCardList');
+                if (savedCardsJSON) {
+                    allCards = JSON.parse(savedCardsJSON).map(card => {
+                        if (typeof card.isTarget === 'undefined') card.isTarget = false;
+                        if (card.type === 'pokemon' && typeof card.isBasic === 'undefined') {
+                            card.isBasic = card.evolutionFrom === null || card.evolutionFrom === undefined;
+                        }
+                        return card;
+                    });
+                }
+            } catch (e) {
+                console.error('Local Storageからのデータ読み込みに失敗しました:', e);
+            }
+        }
+        
+        function saveData() {
+            const dataToSave = allCards.map(card => {
+                const countInput = document.getElementById(`count-${card.id}`);
+                const count = parseInt(countInput ? countInput.value : card.count);
+                return {
+                    id: card.id, name: card.name, count: isNaN(count) ? 0 : count,
+                    isTarget: card.isTarget || false, type: card.type, isBasic: card.isBasic,
+                    evolutionFrom: card.evolutionFrom, effect: card.effect
+                };
+            });
+            localStorage.setItem('pokemonCardList', JSON.stringify(dataToSave));
+        }
+
+        function loadCardsFromJSON() {
+            const jsonInput = document.getElementById('json-input').value;
+            if (!jsonInput) {
+                showInfoModal('エラー', 'JSONが入力されていません。');
+                return;
+            }
+            try {
+                const newCards = JSON.parse(jsonInput);
+                if (!Array.isArray(newCards) || newCards.length === 0) throw new Error();
+                
+                const validCards = newCards.filter(c => c && c.id && c.name && c.count !== undefined && c.type);
+                if (validCards.length === 0) throw new Error();
+
+                allCards = validCards.map(c => {
+                    const newCard = { ...c, isTarget: c.isTarget || false };
+                    if (newCard.type === 'pokemon' && typeof newCard.isBasic === 'undefined') {
+                        newCard.isBasic = newCard.evolutionFrom === null || newCard.evolutionFrom === undefined;
+                    }
+                    return newCard;
+                });
+                
+                saveData();
+                renderCardInputs();
+                initializeGame();
+                showInfoModal('成功', 'カードリストが更新されました！');
+            } catch (e) {
+                showInfoModal('エラー', 'JSONの解析に失敗しました。形式を確認してください。');
+                console.error(e);
+            }
+        }
+
+        document.addEventListener('DOMContentLoaded', () => {
+            loadData();
+            renderCardInputs();
+            initializeGame();
+        });
+
+        function renderCardInputs() {
+            const container = document.getElementById('card-inputs');
+            container.innerHTML = '';
+            allCards.forEach(card => {
+                const cardInputDiv = document.createElement('div');
+                cardInputDiv.className = 'flex items-center space-x-2';
+                
+                let cardTypeDisplay = card.type.substring(0, 3).toUpperCase();
+                if (card.type === 'pokemon') cardTypeDisplay = card.isBasic ? 'タネ' : '進化';
+                
+                cardInputDiv.innerHTML = `
+                    <div class="flex-1">
+                        <label class="block text-gray-700 text-sm font-semibold">${card.name} (${cardTypeDisplay})</label>
+                        <input type="number" id="count-${card.id}" value="${card.count || 0}" min="0" class="w-full px-2 py-1 rounded-lg border border-gray-300" oninput="calculateAndDisplay(); updateCardCount(); saveData();">
+                    </div>
+                    <div class="flex items-center">
+                        <input type="checkbox" id="target-${card.id}" class="h-4 w-4 text-blue-600 rounded" onchange="toggleTargetCard('${card.id}');" ${card.isTarget ? 'checked' : ''}>
+                    </div>
+                `;
+                container.appendChild(cardInputDiv);
+            });
+            updateCardCount();
+            document.getElementById('json-input').value = JSON.stringify(allCards, null, 2);
+        }
+        
+        function toggleTargetCard(cardId) {
+            const card = allCards.find(c => c.id === cardId);
+            if (card) {
+                card.isTarget = document.getElementById(`target-${card.id}`).checked;
+                calculateAndDisplay();
+                saveData();
+            }
+        }
+
+        function updateCardCount() {
+            let total = allCards.reduce((acc, card) => {
+                const countInput = document.getElementById(`count-${card.id}`);
+                const count = parseInt(countInput ? countInput.value : card.count);
+                return acc + (isNaN(count) ? 0 : count);
+            }, 0);
+            document.getElementById('total-card-count').textContent = `(合計 ${total}枚)`;
+        }
+
+        function initializeGame() {
+            deck = [];
+            allCards.forEach(card => {
+                const countInput = document.getElementById(`count-${card.id}`);
+                const count = parseInt(countInput ? countInput.value : card.count);
+                if (!isNaN(count) && count > 0) {
+                    for (let i = 0; i < count; i++) {
+                        deck.push({ ...card, isTarget: card.isTarget || false, isBasic: card.isBasic || false });
+                    }
+                }
+            });
+
+            const totalCards = deck.length;
+            if (totalCards > 0 && totalCards < 13) showInfoModal('警告', `デッキ枚数が ${totalCards} 枚です。手札とサイドを配るには13枚以上必要です。`);
+            
+            shuffle(deck);
+            hand = [], side = [], trash = [], battle = [], bench = [], stadium = [];
+            for (let i = 0; i < 7 && deck.length > 0; i++) hand.push(deck.pop());
+            for (let i = 0; i < 6 && deck.length > 0; i++) side.push(deck.pop());
+            
+            updateDisplay();
+            calculateAndDisplay();
+            updateCardCount();
+        }
+
+        function drawCardToHand() {
+            if (deck.length > 0) {
+                hand.push(deck.pop());
+                updateDisplay();
+                calculateAndDisplay();
+            } else {
+                showInfoModal('山札がありません', 'ドローできませんでした。');
+            }
+        }
+        
+        function playCard(card, cardIndex) {
+            if (card.type === 'pokemon') {
+                if (!card.isBasic) {
+                    showInfoModal('進化ポケモンは出せません', 'バトル場やベンチに出せるのは「タネポケモン」だけです。');
+                    return;
+                }
+                if (battle.length === 0) {
+                    battle.push(hand.splice(cardIndex, 1)[0]);
+                } else if (bench.length < 5) {
+                    bench.push(hand.splice(cardIndex, 1)[0]);
+                } else {
+                    showInfoModal('ベンチがいっぱいです', 'ベンチには5匹までしかポケモンを出せません。');
+                    return;
+                }
+            } else if (card.type === 'stadium') {
+                if (stadium.length > 0) trash.push(stadium.pop());
+                stadium.push(hand.splice(cardIndex, 1)[0]);
+            } else if (card.type === 'energy') {
+                showInfoModal('エネルギーを付ける', 'このシミュレーションでは、エネルギーカードはトラッシュに送られます。', [{ text: 'OK', action: () => {
+                     trash.push(hand.splice(cardIndex, 1)[0]);
+                     updateDisplay();
+                     calculateAndDisplay();
+                     closeInfoModal();
+                }}]);
+                return;
+            } else if (card.type === 'trainer') {
+                const usedCard = hand.splice(cardIndex, 1)[0];
+                if (card.effect) {
+                    if (card.effect.type === 'draw') {
+                        if (hand.length < card.effect.trash) {
+                            showInfoModal('手札が足りません', `このカードを使うには、手札から${card.effect.trash}枚トラッシュする必要があります。`);
+                            hand.splice(cardIndex, 0, usedCard);
+                            return;
+                        }
+                        showTrashModal(card.effect.trash, () => {
+                            trash.push(usedCard);
+                            drawCards(card.effect.count);
+                        });
+                        return;
+                    }
+                    if (card.effect.type === 'search') {
+                         let selectableCards = deck.filter(c => {
+                             if (card.effect.condition === 'basic-pokemon') return c.type === 'pokemon' && c.isBasic;
+                             if (card.effect.targets) return card.effect.targets.includes(c.type);
+                             return true;
+                         });
+                         showDeckModal(selectableCards, card.effect.count, () => {
+                             trash.push(usedCard);
+                             updateDisplay();
+                             calculateAndDisplay();
+                         });
+                         return;
+                    }
+                    if (card.effect.type === 'shuffle-draw') {
+                        deck.push(...hand);
+                        hand = [];
+                        shuffle(deck);
+                        drawCards(card.effect.count);
+                        trash.push(usedCard);
+                    }
+                } else {
+                    trash.push(usedCard);
+                }
+            }
+            updateDisplay();
+            calculateAndDisplay();
+        }
+        
+        function evolvePokemon(card, cardIndex, fromArea) {
+            const handEvolutionCards = hand.filter(h => h.type === 'pokemon' && h.evolutionFrom === card.id);
+            if (handEvolutionCards.length === 0) {
+                showInfoModal('進化できません', 'このポケモンから進化できるカードが手札にありません。');
+                return;
+            }
+            const buttons = handEvolutionCards.map(h => ({
+                text: h.name,
+                action: () => {
+                    const evolveCardIndex = hand.findIndex(hc => hc.id === h.id && hc.name === h.name);
+                    const evolvedCard = hand.splice(evolveCardIndex, 1)[0];
+                    let basePokemon;
+                    if (fromArea === 'battle') {
+                        basePokemon = battle.splice(cardIndex, 1, evolvedCard)[0];
+                    } else {
+                        basePokemon = bench.splice(cardIndex, 1, evolvedCard)[0];
+                    }
+                    trash.push(basePokemon);
+                    closeInfoModal();
+                    updateDisplay();
+                    calculateAndDisplay();
+                }
+            }));
+            buttons.push({ text: 'キャンセル', action: closeInfoModal });
+            showInfoModal('進化するポケモンを選択', '手札から進化するカードを選んでください。', buttons);
+        }
+
+        function drawCards(count) {
+            for (let i = 0; i < count && deck.length > 0; i++) {
+                hand.push(deck.pop());
+            }
+            updateDisplay();
+            calculateAndDisplay();
+        }
+
+        function updateDisplay() {
+            updateDeckStatus();
+            renderCards('hand-container', hand, 'hand');
+            renderCards('side-container', side, 'side');
+            renderCards('trash-container', trash, 'trash');
+            renderCards('battle-container', battle, 'battle');
+            renderCards('bench-container', bench, 'bench');
+            renderCards('stadium-container', stadium, 'stadium');
+        }
+
+        function renderCards(containerId, cardArray, area) {
+            const container = document.getElementById(containerId);
+            container.innerHTML = '';
+            cardArray.forEach((card, index) => {
+                if (!card) return;
+                const cardDiv = document.createElement('div');
+                cardDiv.className = `card rounded-xl ${card.isTarget ? 'target-card' : ''} ${card.type}`;
+                cardDiv.innerHTML = `<span>${card.name}</span>`;
+                
+                if (area === 'hand') cardDiv.onclick = () => playCard(card, index);
+                else if (area === 'battle' || area === 'bench') cardDiv.onclick = () => evolvePokemon(card, index, area);
+                
+                container.appendChild(cardDiv);
+            });
+            const statusElement = document.getElementById(`${area}-status`);
+            if (statusElement) {
+                statusElement.textContent = `枚数: ${cardArray.length}枚`;
+            }
+        }
+
+        function updateDeckStatus() {
+            document.getElementById('deck-status').textContent = `残り: ${deck.length}枚`;
+        }
+        
+        function combinations(n, r) {
+            if (r < 0 || r > n) return 0;
+            if (r === 0 || r === n) return 1;
+            if (r > n / 2) r = n - r;
+            let result = 1;
+            for (let i = 1; i <= r; i++) {
+                result = result * (n - i + 1) / i;
+            }
+            return result;
+        }
+
+        function calculateAndDisplay() {
+            const deckSize = deck.length;
+            const targetCardsInDeck = deck.filter(card => card && card.isTarget).length;
+            const drawCount = 1;
+            
+            if (deckSize < drawCount) {
+                document.getElementById('result').textContent = '山札にカードがありません。';
+                return;
+            }
+            
+            const combinations_total = combinations(deckSize, drawCount);
+            if (combinations_total === 0) {
+                 document.getElementById('result').textContent = '確率を計算できません。';
+                return;
+            }
+            
+            const combinations_no_target = combinations(deckSize - targetCardsInDeck, drawCount);
+            const prob_no_target = combinations_no_target / combinations_total;
+            const prob_at_least_one = 1 - prob_no_target;
+            
+            document.getElementById('result').textContent = `次のドローで特定のカードを引く確率: ${(prob_at_least_one * 100).toFixed(2)}%`;
+        }
+        
+        function shuffle(array) {
+            for (let i = array.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [array[i], array[j]] = [array[j], array[i]];
+            }
+        }
+
+        function showInfoModal(title, message, buttons = [{ text: '閉じる', action: closeInfoModal }]) {
+            const modal = document.getElementById('info-modal');
+            document.getElementById('modal-title').textContent = title;
+            document.getElementById('modal-message').textContent = message;
+            const buttonContainer = document.getElementById('modal-buttons');
+            buttonContainer.innerHTML = '';
+            buttons.forEach(btn => {
+                const button = document.createElement('button');
+                button.textContent = btn.text;
+                button.className = 'bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded-xl btn-primary';
+                button.onclick = btn.action;
+                buttonContainer.appendChild(button);
+            });
+            modal.style.display = 'flex';
+        }
+        function closeInfoModal() {
+            document.getElementById('info-modal').style.display = 'none';
+        }
+        
+        let selectedDeckCards = [];
+        let drawLimit = 0;
+        function showDeckModal(cardsToDisplay, limit, callback) {
+            const modal = document.getElementById('deck-modal');
+            const grid = document.getElementById('deck-select-grid');
+            grid.innerHTML = '';
+            selectedDeckCards = [];
+            drawLimit = limit;
+            deckSearchCallback = callback || null;
+            // ★修正点: 文言を「〜まで」に変更
+            document.getElementById('deck-modal-message').textContent = `山札から${drawLimit}枚までカードを選んでください。`;
+            
+            const uniqueCards = [...new Map(cardsToDisplay.map(item => [item.id, item])).values()];
+
+            uniqueCards.forEach(card => {
+                const cardDiv = document.createElement('div');
+                cardDiv.className = `modal-card ${card.type}`;
+                cardDiv.textContent = card.name;
+                cardDiv.dataset.cardId = card.id;
+                cardDiv.onclick = () => {
+                    const cardId = cardDiv.dataset.cardId;
+                    const cardIndexInDeck = deck.findIndex(c => c.id === cardId);
+
+                    if (cardDiv.classList.contains('selected')) {
+                        selectedDeckCards = selectedDeckCards.filter(idx => idx !== cardIndexInDeck);
+                        cardDiv.classList.remove('selected');
+                    } else if (selectedDeckCards.length < drawLimit) {
+                        selectedDeckCards.push(cardIndexInDeck);
+                        cardDiv.classList.add('selected');
+                    }
+                };
+                grid.appendChild(cardDiv);
+            });
+            modal.style.display = 'flex';
+        }
+        function closeDeckModal() {
+            document.getElementById('deck-modal').style.display = 'none';
+        }
+        
+        function selectAndDrawCards() {
+            // ★修正点: 選択枚数が指定枚数と完全一致しなくても良いように、エラーチェックを削除
+            // if (selectedDeckCards.length !== drawLimit) {
+            //      showInfoModal('選択枚数エラー', `${drawLimit}枚のカードを選択してください。`);
+            //      return;
+            // }
+            selectedDeckCards.sort((a, b) => b - a).forEach(index => {
+                if (deck[index]) hand.push(deck.splice(index, 1)[0]);
+            });
+            closeDeckModal();
+            updateDisplay();
+            calculateAndDisplay();
+            if (deckSearchCallback) {
+                deckSearchCallback();
+                deckSearchCallback = null;
+            }
+        }
+        
+        let selectedHandCards = [];
+        let trashLimit = 0;
+        let trashCallback = null;
+        function showTrashModal(limit, callback) {
+            const modal = document.getElementById('hand-modal');
+            const grid = document.getElementById('hand-select-grid');
+            grid.innerHTML = '';
+            selectedHandCards = [];
+            trashLimit = limit;
+            trashCallback = callback;
+            document.getElementById('hand-modal-message').textContent = `手札から${trashLimit}枚のカードを選んでトラッシュしてください。`;
+
+            hand.forEach((card, index) => {
+                const cardDiv = document.createElement('div');
+                cardDiv.className = `modal-card ${card.type}`;
+                cardDiv.textContent = card.name;
+                cardDiv.onclick = () => {
+                    if (selectedHandCards.includes(index)) {
+                        selectedHandCards = selectedHandCards.filter(i => i !== index);
+                        cardDiv.classList.remove('selected');
+                    } else if (selectedHandCards.length < trashLimit) {
+                        selectedHandCards.push(index);
+                        cardDiv.classList.add('selected');
+                    }
+                };
+                grid.appendChild(cardDiv);
+            });
+            modal.style.display = 'flex';
+        }
+        function closeHandModal() {
+            document.getElementById('hand-modal').style.display = 'none';
+        }
+        function selectAndTrashCards() {
+            if (selectedHandCards.length !== trashLimit) {
+                showInfoModal('選択枚数エラー', `${trashLimit}枚のカードを選択してください。`);
+                return;
+            }
+            selectedHandCards.sort((a, b) => b - a).forEach(index => {
+                trash.push(hand.splice(index, 1)[0]);
+            });
+            closeHandModal();
+            updateDisplay();
+            calculateAndDisplay();
+            if (trashCallback) {
+                trashCallback();
+            }
+        }
+        
+        function getZoneArrayByName(name) {
+            switch (name) {
+                case 'deck': return deck;
+                case 'hand': return hand;
+                case 'side': return side;
+                case 'trash': return trash;
+                case 'battle': return battle;
+                case 'bench': return bench;
+                case 'stadium': return stadium;
+                default: return null;
+            }
+        }
+
+        function openMoveModal(sourceName) {
+            moveSourceZoneName = sourceName;
+            selectedIndicesToMove = [];
+            const sourceArray = getZoneArrayByName(sourceName);
+
+            if (!sourceArray || sourceArray.length === 0) {
+                showInfoModal('移動エラー', 'このゾーンには移動できるカードがありません。');
+                return;
+            }
+
+            const modal = document.getElementById('move-modal');
+            const grid = document.getElementById('move-select-grid');
+            const destButtons = document.getElementById('move-destination-buttons');
+            grid.innerHTML = '';
+            destButtons.innerHTML = '';
+
+            const zoneDisplayName = { hand: '手札', deck: '山札', side: 'サイド', trash: 'トラッシュ', battle: 'バトル場', bench: 'ベンチ', stadium: 'スタジアム' };
+            document.getElementById('move-modal-title').textContent = `${zoneDisplayName[sourceName]}からカードを移動`;
+
+            sourceArray.forEach((card, index) => {
+                const cardDiv = document.createElement('div');
+                cardDiv.className = `modal-card ${card.type}`;
+                cardDiv.textContent = card.name;
+                cardDiv.onclick = () => {
+                    if (selectedIndicesToMove.includes(index)) {
+                        selectedIndicesToMove = selectedIndicesToMove.filter(i => i !== index);
+                        cardDiv.classList.remove('selected');
+                    } else {
+                        selectedIndicesToMove.push(index);
+                        cardDiv.classList.add('selected');
+                    }
+                };
+                grid.appendChild(cardDiv);
+            });
+
+            Object.keys(zoneDisplayName).forEach(destName => {
+                if (destName === sourceName) return;
+                const button = document.createElement('button');
+                button.textContent = `${zoneDisplayName[destName]}へ`;
+                button.className = 'bg-indigo-500 hover:bg-indigo-600 text-white font-bold py-2 px-3 rounded-lg btn-primary text-sm';
+                button.onclick = () => executeMove(destName);
+                destButtons.appendChild(button);
+            });
+
+            modal.style.display = 'flex';
+        }
+
+        function executeMove(destName) {
+            if (selectedIndicesToMove.length === 0) {
+                showInfoModal('選択エラー', '移動するカードを1枚以上選択してください。');
+                return;
+            }
+
+            const sourceArray = getZoneArrayByName(moveSourceZoneName);
+            const destArray = getZoneArrayByName(destName);
+
+            const movingCards = selectedIndicesToMove.map(index => sourceArray[index]);
+            if (destName === 'battle' && (destArray.length + movingCards.length > 1 || movingCards.some(c => c.type !== 'pokemon'))) {
+                 showInfoModal('移動エラー', 'バトル場にはポケモンを1枚しか置けません。'); return;
+            }
+            if (destName === 'bench' && (destArray.length + movingCards.length > 5 || movingCards.some(c => c.type !== 'pokemon'))) {
+                showInfoModal('移動エラー', 'ベンチにはポケモンを5枚までしか置けません。'); return;
+            }
+            if (destName === 'stadium' && (destArray.length + movingCards.length > 1 || movingCards.some(c => c.type !== 'stadium'))) {
+                 showInfoModal('移動エラー', 'スタジアムは1枚しか置けません。'); return;
+            }
+            
+            const cardsToMove = [];
+            selectedIndicesToMove.sort((a, b) => b - a).forEach(index => {
+                cardsToMove.push(sourceArray.splice(index, 1)[0]);
+            });
+
+            destArray.push(...cardsToMove.reverse());
+
+            if (destName === 'deck') {
+                shuffle(destArray);
+            }
+
+            closeMoveModal();
+            updateDisplay();
+            calculateAndDisplay();
+        }
+
+        function closeMoveModal() {
+            document.getElementById('move-modal').style.display = 'none';
+        }
+    </script>
+</body>
+</html>
